@@ -15,10 +15,12 @@ func main(){
 		os.Exit(1)
 	}
 	fmt.Println("starting crawl of: ", args[1])
-	htmlBody, err := getHTML(args[1])
+	res := make(map[string]int)
+	crawl, err := crawlPage(args[1], args[1], res)
 	if err != nil{
-		fmt.Println("Error: ", err)
-		return
+		fmt.Println(err)
 	}
-	fmt.Println(htmlBody)
+	for key,val := range crawl{
+		fmt.Println(key, ": ", val)
+	}
 }
