@@ -81,7 +81,7 @@ func TestGetURLsFromHTML(t *testing.T) {
 			expected: []string{},
 		},
 		{
-			name:     "absolute and relative URLs",
+			name:     "Invalid URL",
 			inputURL: "**&^blog()boot:dev",
 			inputBody: `
 			<html>

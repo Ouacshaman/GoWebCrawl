@@ -3,9 +3,17 @@ package main
 import (
 	"strings"
 	"golang.org/x/net/html"
+	"net/url"
 )
 
 func getURLsFromHTML(htmlBody, rawBaseURL string) ([]string, error){
+	if htmlBody == ``{
+		return []string{}, nil
+	}
+	_, err := url.Parse(rawBaseURL)
+	if err != nil{
+		return []string{}, nil
+	}
 	doc, err:= html.Parse(strings.NewReader(htmlBody))
 	if err != nil {
 		return []string{}, err
@@ -15,7 +23,15 @@ func getURLsFromHTML(htmlBody, rawBaseURL string) ([]string, error){
 		if n.Type == html.ElementNode && n.Data == "a"{
 			for _, a := range n.Attr{
 				if a.Key == "href" {
-					(*links) = append((*links), a.Val)
+					u, err := url.Parse(a.Val)
+					if err != nil{
+						break
+					}
+					res := a.Val 
+					if !u.IsAbs(){
+							res = rawBaseURL + res
+					}
+					(*links) = append((*links), res)
 					break
 				}
 			}
