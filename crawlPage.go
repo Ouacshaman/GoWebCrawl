@@ -5,42 +5,62 @@ import (
 	"net/url"
 )
 
-func crawlPage(rawBaseURL, rawCurrentURL string, pages map[string]int) (map[string]int, error) {
-	bURL, err := url.Parse(rawBaseURL)
-	if err != nil{
-		return make(map[string]int), nil
-	}
+type config struct {
+	pages              map[string]int
+	baseURL            *url.URL
+	mu                 *sync.Mutex
+	concurrencyControl chan struct{}
+	wg                 *sync.WaitGroup
+}
+
+func (cfg *config) crawlPage(rawCurrentURL string) {
 	cURL, err := url.Parse(rawCurrentURL)
 	if err != nil{
-		return pages, err
+		fmt.Println(err)
+		return
 	}
-	if bURL.Hostname() != cURL.Hostname(){
-		return pages, nil
+	if baseURL.Hostname() != cURL.Hostname(){
+		return
 	}
 	normalizedURL, err := normalizeURL(rawCurrentURL)
 	if err != nil{
-		return pages, err
+		fmt.Println(err)
+		return
 	}
-	if _, ok := pages[normalizedURL]; ok {
+	isFirst := addPageVisit(normalizedURL)
+	if !isFirst{
 		fmt.Println("Already visited:", normalizedURL)
-		pages[normalizedURL] ++
-		return pages, nil
+		cfg.pages[normalizedURL] ++
+		return
 	}
-	pages[normalizedURL] = 1
+	cfg.pages[normalizedURL] = 1
 	html, err := getHTML(rawCurrentURL)
 	if err != nil{
-		return pages, err
+		fmt.Println(err)
+		return
 	}
 	fmt.Println(rawCurrentURL)
-	urls, err := getURLsFromHTML(html, rawBaseURL)
+	urls, err := getURLsFromHTML(html, cfg.baseURL.String())
 	if err != nil{
-		return pages, err
+		fmt.Println(err)
+		return
 	}
 	for _,url := range urls{
-		pages, err = crawlPage(rawBaseURL, url, pages)
-		if err != nil{
-			return pages, err
-		}
+		cfg.wg.Add(1)
+		<-cfg.concurrencyControl
+		go crawlPage(cfg.baseURL, url, cfg.pages)
 	}
-	return pages, nil
+	cfg.wg.Wait()
+}
+
+func (cfg *config) addPageVisit(normalizedURL string) (isFirst bool){
+	cfg.mu.Lock()
+	cfg.concurrencyControl <- struct{}{}
+	cfg.wg.Add(1)
+	defer cfg.wg.Done()
+	defer cfg.mu.Unlock()
+	if _, ok := cfg.pages[normalizedURL]; ok{
+		return false
+	}
+	return true
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sync"
 )
 
 func main(){
@@ -16,11 +17,16 @@ func main(){
 	}
 	fmt.Println("starting crawl of: ", args[1])
 	res := make(map[string]int)
-	crawl, err := crawlPage(args[1], args[1], res)
-	if err != nil{
-		fmt.Println(err)
+	config := config{
+		pages: res,
+		baseURL: args[1],
+		mu: &sync.Mutex{},
+		concurrencyControl: make(chan struct{}, 1),
+		wg: &sync.WaitGroup{},
 	}
-	for key,val := range crawl{
+	go config.crawlPage(config.baseURL)
+	config.wg.Wait()
+	for key,val := range config.pages{
 		fmt.Println(key, ": ", val)
 	}
 }
