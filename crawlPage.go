@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"sync"
 )
 
 type config struct {
@@ -14,12 +15,15 @@ type config struct {
 }
 
 func (cfg *config) crawlPage(rawCurrentURL string) {
+	defer cfg.wg.Done()
+	cfg.concurrencyControl <- struct{}{}
+	defer func() { <-cfg.concurrencyControl}()
 	cURL, err := url.Parse(rawCurrentURL)
 	if err != nil{
 		fmt.Println(err)
 		return
 	}
-	if baseURL.Hostname() != cURL.Hostname(){
+	if cfg.baseURL.Hostname() != cURL.Hostname(){
 		return
 	}
 	normalizedURL, err := normalizeURL(rawCurrentURL)
@@ -27,13 +31,14 @@ func (cfg *config) crawlPage(rawCurrentURL string) {
 		fmt.Println(err)
 		return
 	}
-	isFirst := addPageVisit(normalizedURL)
+	isFirst := cfg.addPageVisit(normalizedURL)
 	if !isFirst{
+		cfg.mu.Lock()
 		fmt.Println("Already visited:", normalizedURL)
 		cfg.pages[normalizedURL] ++
+		cfg.mu.Unlock()
 		return
 	}
-	cfg.pages[normalizedURL] = 1
 	html, err := getHTML(rawCurrentURL)
 	if err != nil{
 		fmt.Println(err)
@@ -47,20 +52,16 @@ func (cfg *config) crawlPage(rawCurrentURL string) {
 	}
 	for _,url := range urls{
 		cfg.wg.Add(1)
-		<-cfg.concurrencyControl
-		go crawlPage(cfg.baseURL, url, cfg.pages)
+		go cfg.crawlPage(url)
 	}
-	cfg.wg.Wait()
 }
 
 func (cfg *config) addPageVisit(normalizedURL string) (isFirst bool){
 	cfg.mu.Lock()
-	cfg.concurrencyControl <- struct{}{}
-	cfg.wg.Add(1)
-	defer cfg.wg.Done()
 	defer cfg.mu.Unlock()
 	if _, ok := cfg.pages[normalizedURL]; ok{
 		return false
 	}
+	cfg.pages[normalizedURL] = 1
 	return true
 }
