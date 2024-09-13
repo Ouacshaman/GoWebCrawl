@@ -64,6 +64,7 @@ func (cfg *config) addPageVisit(normalizedURL string) (isFirst bool){
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 	if _, ok := cfg.pages[normalizedURL]; ok{
+		cfg.pages[normalizedURL]++
 		return false
 	}
 	if len(cfg.pages) < cfg.maxPages{
