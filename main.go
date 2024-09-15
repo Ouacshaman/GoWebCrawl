@@ -45,7 +45,8 @@ func main(){
 	config.wg.Add(1)
 	go config.crawlPage(config.baseURL.String())
 	config.wg.Wait()
-	for key,val := range config.pages{
-		fmt.Println(key, ": ", val)
-	}
+	// for key,val := range config.pages{
+	//	 fmt.Println(key, ": ", val)
+	// }
+	printReport(config.pages, args[1])
 }
