@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 )
 
 type Page struct{
@@ -10,43 +12,34 @@ type Page struct{
 }
 
 func printReport(pages map[string]int, baseURL string){
-	fmt.Println("Report for ", baseURL)
+	fmt.Println("=============================")
+	fmt.Println("REPORT for", baseURL)
+	fmt.Println("=============================")
 	sorted := sortReport(pages)
 	for _, page := range sorted{
-		fmt.Println(page.Url, page.Count)
+		baseURLTrimmed := strings.TrimPrefix(baseURL, "https://")
+		if !strings.HasPrefix(strings.TrimRight(page.Url, "/"), strings.TrimRight(baseURLTrimmed, "/")){
+			continue
+		}
+		output := fmt.Sprintf("Found %d internal links to %s", page.Count, page.Url)
+		fmt.Println(output)
 	}
 }
 
 func sortReport(pages map[string]int) []Page{
 	var res []Page
 	for k, v := range pages{
-		if len(res) > 0 {
-			entry := Page{
-				Url: k,
-				Count: v,
-			}
-			res = append(res, entry)
-			end := len(res)
-			swapping := true
-			for swapping{
-				swapping = false
-				for i:=1; i<end; i++{
-					if res[i-1].Count < res[i].Count{
-						temp := res[i-1]
-						res[i-1] = res[i]
-						res[i] = temp
-						swapping = true;
-					}
-				}
-				end -= 1
-			}
-		}else{
-			initial := Page{
-				Url: k,
-				Count: v,
-			}
-			res = append(res, initial)
+		temp := Page{
+			Url: k,
+			Count: v,
 		}
+		res = append(res, temp)
 	}
+	sort.Slice(res, func(i,j int) bool {
+		if res[i].Count != res[j].Count{
+			return res[i].Count > res[j].Count
+		}
+		return res[i].Url < res[j].Url
+	})
 	return res
 }

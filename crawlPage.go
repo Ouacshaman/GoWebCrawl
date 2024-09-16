@@ -41,7 +41,7 @@ func (cfg *config) crawlPage(rawCurrentURL string) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(rawCurrentURL)
+	fmt.Println("Crawling",rawCurrentURL)
 	urls, err := getURLsFromHTML(html, cfg.baseURL.String())
 	if err != nil{
 		fmt.Println(err)
